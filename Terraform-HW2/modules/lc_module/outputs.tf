@@ -10,6 +10,6 @@ output "sg_vpc_id" {
   value = module.security_groups.vpc__id
 }
 
-output "private_subnets_ids_list" {
-  value = module.security_groups.vpc_pv_subnets_ids_list
+output "private_subnets_list" {
+  value = module.security_groups.vpc_pv_subnets_list
 }

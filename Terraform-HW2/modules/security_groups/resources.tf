@@ -2,6 +2,10 @@ module "vpc" {
   source = "../vpc_module"
 }
 
+locals {
+  creationDateTime = formatdate("DD MMM YYYY - HH:mm AA ZZZ", timestamp())
+}
+
 resource "aws_security_group" "kmTFsg" {
   name        = "kmTFsg"
   description = "Security Group created for Launch Configuration"
@@ -29,6 +33,7 @@ resource "aws_security_group" "kmTFsg" {
 
   tags = {
     "Name" = "kmTFsg"
+    "CreationDateTime" = local.creationDateTime
   }
 }
 
@@ -54,5 +59,6 @@ resource "aws_security_group" "kmTFlbsg" {
 
   tags = {
     "Name" = "kmTFlvsg"
+    "CreationDateTime" = local.creationDateTime
   }
 }

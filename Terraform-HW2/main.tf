@@ -7,14 +7,14 @@ terraform {
   }
 }
 
+locals {
+  creationDateTime = formatdate("DD MMM YYYY - HH:mm AA ZZZ", timestamp())
+}
+
 # Choosing region
 provider "aws" {
   region = "us-west-2"
 }
-
-/*module "vpc" {
-  source = "./modules/vpc_module"  
-}*/
 
 module "autoscaling_group" {
   source = "./modules/autoscaling_group"

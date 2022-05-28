@@ -1,8 +1,13 @@
+locals {
+  creationDateTime = formatdate("DD MMM YYYY - HH:mm AA ZZZ", timestamp())
+}
+
 # Creating a VPC
 resource "aws_vpc" "vpc" {
   cidr_block = var.main_cidr_block
   tags = {
     "Name" = "kmTFvpc"
+    "CreationDateTime" = local.creationDateTime
   }
 }
 
@@ -11,62 +16,29 @@ resource "aws_internet_gateway" "igateway" {
   vpc_id = aws_vpc.vpc.id
   tags = {
     "Name" = "kmTFigateway"
+    "CreationDateTime" = local.creationDateTime
   }
 }
 
-# Creating public subnets
-resource "aws_subnet" "public1" {
-  vpc_id            = aws_vpc.vpc.id
-  cidr_block        = "150.10.1.0/24"
-  availability_zone = "us-west-2a"
+resource "aws_subnet" "public_subnets" {
+  count = length(data.aws_availability_zones.availableAZ.names)
+  availability_zone = data.aws_availability_zones.availableAZ.names[count.index]
+  vpc_id = aws_vpc.vpc.id
+  cidr_block = cidrsubnet(var.main_cidr_block,4,count.index)
   tags = {
-    "Name" = "kmTFpbsubnet1"
+    "Name" = "kmTFpbsubnet${count.index}"
+    "CreationDateTime" = local.creationDateTime
   }
 }
 
-resource "aws_subnet" "public2" {
-  vpc_id            = aws_vpc.vpc.id
-  cidr_block        = "150.10.2.0/24"
-  availability_zone = "us-west-2b"
+resource "aws_subnet" "private_subnets" {
+  count = length(data.aws_availability_zones.availableAZ.names)
+  availability_zone = data.aws_availability_zones.availableAZ.names[count.index]
+  vpc_id = aws_vpc.vpc.id
+  cidr_block = cidrsubnet(var.main_cidr_block,4,count.index+4)
   tags = {
-    "Name" = "kmTFpbsubnet2"
-  }
-}
-
-resource "aws_subnet" "public3" {
-  vpc_id            = aws_vpc.vpc.id
-  cidr_block        = "150.10.3.0/24"
-  availability_zone = "us-west-2c"
-  tags = {
-    "Name" = "kmTFpbsubnet3"
-  }
-}
-
-# Creating private subnets
-resource "aws_subnet" "private1" {
-  vpc_id            = aws_vpc.vpc.id
-  cidr_block        = "150.10.4.0/24"
-  availability_zone = "us-west-2a"
-  tags = {
-    "Name" = "kmTFpvsubnet1"
-  }
-}
-
-resource "aws_subnet" "private2" {
-  vpc_id            = aws_vpc.vpc.id
-  cidr_block        = "150.10.5.0/24"
-  availability_zone = "us-west-2b"
-  tags = {
-    "Name" = "kmTFpvsubnet2"
-  }
-}
-
-resource "aws_subnet" "private3" {
-  vpc_id            = aws_vpc.vpc.id
-  cidr_block        = "150.10.6.0/24"
-  availability_zone = "us-west-2c"
-  tags = {
-    "Name" = "kmTFpvsubnet3"
+    "Name" = "kmTFpvsubnet${count.index}"
+    "CreationDateTime" = local.creationDateTime
   }
 }
 
@@ -82,23 +54,15 @@ resource "aws_route_table" "pbRT" {
 
   tags = {
     "Name" = "kmTFpbrt"
+    "CreationDateTime" = local.creationDateTime
   }
 }
 
 # Associating public subnets to public route table
 
-resource "aws_route_table_association" "pbs1" {
-  subnet_id      = aws_subnet.public1.id
-  route_table_id = aws_route_table.pbRT.id
-}
-
-resource "aws_route_table_association" "pbs2" {
-  subnet_id      = aws_subnet.public2.id
-  route_table_id = aws_route_table.pbRT.id
-}
-
-resource "aws_route_table_association" "pbs3" {
-  subnet_id      = aws_subnet.public3.id
+resource "aws_route_table_association" "public_rt" {
+  count = length(data.aws_availability_zones.availableAZ.names)
+  subnet_id = element(aws_subnet.public_subnets.*.id,count.index)
   route_table_id = aws_route_table.pbRT.id
 }
 
@@ -108,16 +72,18 @@ resource "aws_eip" "eip1" {
   depends_on = [aws_internet_gateway.igateway]
   tags = {
     "Name" = "kmTFeip"
+    "CreationDateTime" = local.creationDateTime
   }
 }
 
 # Create NAT Gateway
 resource "aws_nat_gateway" "natgtw" {
   allocation_id = aws_eip.eip1.id
-  subnet_id     = aws_subnet.public1.id
+  subnet_id     = element(aws_subnet.public_subnets.*.id,0)
 
   tags = {
     "Name" = "kmTFnatgtw"
+    "CreationDateTime" = local.creationDateTime
   }
 }
 
@@ -133,22 +99,14 @@ resource "aws_route_table" "pvRT" {
 
   tags = {
     "Name" = "kmTFpvrt"
+    "CreationDateTime" = local.creationDateTime
   }
 }
 
 # Associating private subnets to private route table
 
-resource "aws_route_table_association" "pvs1" {
-  subnet_id      = aws_subnet.private1.id
-  route_table_id = aws_route_table.pvRT.id
-}
-
-resource "aws_route_table_association" "pvs2" {
-  subnet_id      = aws_subnet.private2.id
-  route_table_id = aws_route_table.pvRT.id
-}
-
-resource "aws_route_table_association" "pvs3" {
-  subnet_id      = aws_subnet.private3.id
+resource "aws_route_table_association" "private_rt" {
+  count = length(data.aws_availability_zones.availableAZ.names)
+  subnet_id = element(aws_subnet.private_subnets.*.id,count.index)
   route_table_id = aws_route_table.pvRT.id
 }

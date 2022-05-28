@@ -2,22 +2,30 @@ module "launch_configuration" {
   source = "../lc_module"
 }
 
-
+locals {
+  creationDateTime = formatdate("DD MMM YYYY - HH:mm AA ZZZ", timestamp())
+}
 
 resource "aws_autoscaling_group" "kmTFasg" {
   name                = "kmTFasg"
   max_size            = 2
   min_size            = 1
   desired_capacity    = 2
-  vpc_zone_identifier = module.launch_configuration.private_subnets_ids_list
+  vpc_zone_identifier = module.launch_configuration.private_subnets_list.*.id
   launch_configuration = module.launch_configuration.lc_name
+
+  tag {
+    key = "CreationDateTime"
+    value = local.creationDateTime
+    propagate_at_launch = true
+  }
 }
 
 resource "aws_lb" "kmTFlb" {
   name               = "kmTFlb"
   internal           = false
   load_balancer_type = "network"
-  subnets            = module.launch_configuration.private_subnets_ids_list
+  subnets            = module.launch_configuration.private_subnets_list.*.id
 }
 
 resource "aws_lb_target_group" "kmTFlbtg" {
